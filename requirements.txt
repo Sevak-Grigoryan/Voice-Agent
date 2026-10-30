@@ -1,0 +1,12 @@
+pocket-tts
+huggingface_hub
+sentencepiece
+pyyaml
+numpy
+scipy
+flask
+noisereduce
+lameenc
+soundfile
+python-telegram-bot
+python-dotenv

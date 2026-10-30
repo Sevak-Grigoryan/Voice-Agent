@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Agent</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6b6b70;
+    --line: #e2e0db;
+    --accent: #c2410c;
+    --accent-text: #ffffff;
+    --soft: #fdf1ea;
+    --error: #b42318;
+    --warn: #a15c07;
+    --ok: #12703a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161616;
+      --card: #202020;
+      --text: #ededed;
+      --muted: #a0a0a6;
+      --line: #333333;
+      --accent: #f97316;
+      --accent-text: #1a1a1a;
+      --soft: #2a1d15;
+      --error: #f97066;
+      --warn: #fbbf24;
+      --ok: #4ade80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 28px; }
+
+  .step {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .step h2 { font-size: 18px; margin: 0 0 4px; display: flex; gap: 10px; align-items: center; }
+  .num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-text);
+    display: inline-grid; place-items: center; font-size: 14px; font-weight: 700; flex: none;
+  }
+  .hint { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab {
+    flex: 1; padding: 10px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit;
+  }
+  .tab[aria-selected="true"] { border-color: var(--accent); background: var(--soft); font-weight: 600; }
+
+  .drop {
+    display: block; border: 2px dashed var(--line); border-radius: 12px;
+    padding: 24px; text-align: center; cursor: pointer; color: var(--muted);
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); color: var(--text); }
+  .drop input { display: none; }
+
+  .record-box { text-align: center; }
+  .say {
+    background: var(--soft); border-radius: 10px; padding: 12px; margin: 0 0 14px;
+    font-size: 17px; text-align: left;
+  }
+  .say small { display: block; color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+  .rec-btn {
+    width: 72px; height: 72px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--accent); color: var(--accent-text); font-size: 14px; font-weight: 700;
+  }
+  .rec-btn.recording { animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .timer { font-variant-numeric: tabular-nums; color: var(--muted); margin-top: 8px; }
+
+  .clips { list-style: none; padding: 0; margin: 14px 0 0; }
+  .clips li {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 6px;
+    border: 1px solid var(--line); border-radius: 10px; font-size: 14px;
+  }
+  .clips .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clips .len { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .clips button {
+    border: none; background: transparent; color: var(--muted); cursor: pointer;
+    font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+  }
+  .clips button:hover { color: var(--error); background: var(--soft); }
+
+  .check { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 15px; cursor: pointer; }
+  .check input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--accent); }
+  .check small { display: block; color: var(--muted); font-size: 13px; }
+
+  .voice-ready { display: none; margin-top: 14px; }
+  .voice-ready.show { display: block; }
+  .voice-ready p { margin: 0 0 6px; font-size: 14px; }
+  .compare { display: grid; gap: 10px; margin-top: 10px; }
+  .compare label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 2px; }
+  .quality { border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-top: 10px; background: var(--soft); }
+  .quality b { display: block; }
+  .quality.good b { color: var(--ok); }
+  .quality.ok b { color: var(--warn); }
+  .quality.bad b { color: var(--error); }
+  audio { width: 100%; }
+
+  textarea {
+    width: 100%; min-height: 160px; resize: vertical; padding: 12px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--text); font: inherit; font-size: 17px;
+  }
+  textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .text-tools { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .link-btn { border: none; background: none; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+  .link-btn input { display: none; }
+
+  details { margin-top: 14px; font-size: 14px; }
+  summary { cursor: pointer; color: var(--muted); }
+  select {
+    width: 100%; margin-top: 8px; padding: 10px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit;
+  }
+
+  .go {
+    width: 100%; padding: 16px; border: none; border-radius: 12px; cursor: pointer;
+    background: var(--accent); color: var(--accent-text); font: inherit; font-size: 18px; font-weight: 700;
+  }
+  .go:disabled { opacity: .45; cursor: not-allowed; }
+  .why { text-align: center; color: var(--muted); font-size: 14px; margin: 8px 0 0; min-height: 21px; }
+
+  .status { margin-top: 16px; display: none; }
+  .status.show { display: block; }
+  .status-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 14px; margin-bottom: 6px; }
+  .status-top b { font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width .4s; }
+  .bar.busy span { width: 35%; animation: slide 1.4s ease-in-out infinite; }
+  @keyframes slide { from { margin-left: -35%; } to { margin-left: 100%; } }
+  .status p { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+  .piece { font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cancel {
+    margin-top: 10px; padding: 8px 14px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 14px;
+  }
+
+  .result { display: none; }
+  .result.show { display: block; }
+  .download {
+    display: inline-block; margin-top: 12px; padding: 10px 16px; border-radius: 10px;
+    border: 1px solid var(--accent); color: var(--accent); text-decoration: none; font-weight: 600;
+  }
+  .error { color: var(--error); }
+  .ok { color: var(--ok); }
+  .note { color: var(--muted); font-size: 13px; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Voice Agent</h1>
+  <p class="lead">Give it a recording of a voice and some Armenian text. It reads the text in that voice.</p>
+
+  <!-- Step 1: voice -->
+  <section class="step">
+    <h2><span class="num">1</span> Add a voice</h2>
+    <p class="hint">One person speaking, at least 5 seconds. A longer recording is fine: the clearest 15 seconds are used.
+      Have only short clips? Add several of the <strong>same person</strong>, they are joined into one.</p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="upload">Upload a file</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="record">Record now</button>
+    </div>
+
+    <div id="tab-upload">
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="audio/*,video/*" multiple>
+        <strong>Click to choose files</strong> or drag them here<br>
+        <small>one or several clips · mp3, wav, m4a, ogg…</small>
+      </label>
+    </div>
+
+    <div id="tab-record" hidden>
+      <div class="say">
+        <small>Read this out loud, or say anything you like:</small>
+        Բարև ձեզ։ Այսօր եղանակը շատ լավն է, և ես ուզում եմ մի փոքր զբոսնել քաղաքում։
+      </div>
+      <div class="record-box">
+        <button class="rec-btn" id="rec">Record</button>
+        <div class="timer" id="timer">Press to start, press again to stop</div>
+      </div>
+    </div>
+
+    <ul class="clips" id="clips"></ul>
+
+    <label class="check">
+      <input type="checkbox" id="clean" checked>
+      <span>Clean background noise
+        <small>Recommended for noisy recordings. Clear recordings are left as they are.</small></span>
+    </label>
+
+    <div class="voice-ready" id="voiceReady">
+      <p id="voiceInfo">Preparing the voice…</p>
+      <div class="compare">
+        <div><label>Before</label><audio id="originalPlayer" controls></audio></div>
+        <div><label id="afterLabel">After cleanup, this is what is copied</label><audio id="voicePlayer" controls></audio></div>
+      </div>
+      <div class="quality" id="quality"></div>
+    </div>
+  </section>
+
+  <!-- Step 2: text -->
+  <section class="step">
+    <h2><span class="num">2</span> Write the text</h2>
+    <p class="hint">Armenian text, as long as you like. Numbers are read out as words. A new line gives a longer pause.</p>
+    <textarea id="text" placeholder="Գրեք տեքստը այստեղ…"></textarea>
+    <div class="text-tools">
+      <span id="count">0 characters</span>
+      <label class="link-btn">Load a .txt file<input type="file" id="textFile" accept=".txt,text/plain"></label>
+    </div>
+
+    <details>
+      <summary>Advanced: choose a model</summary>
+      <select id="variant">
+        <option value="run4_60k">Natural sounding (recommended)</option>
+        <option value="run5_175k">Most accurate pronunciation</option>
+        <option value="run5_250k">Latest training step</option>
+        <option value="tri_v1">Armenian + Russian + English</option>
+      </select>
+    </details>
+  </section>
+
+  <!-- Step 3: create -->
+  <section class="step">
+    <h2><span class="num">3</span> Create the audio</h2>
+    <button class="go" id="go" disabled>Create audio</button>
+    <p class="why" id="why">Add a voice and some text first.</p>
+
+    <div class="status" id="status">
+      <div class="status-top"><span id="statusTitle">Starting…</span><b id="statusNums"></b></div>
+      <div class="bar" id="bar"><span id="barFill"></span></div>
+      <p class="piece" id="piece"></p>
+      <p id="statusText"></p>
+      <button class="cancel" id="cancel">Stop</button>
+    </div>
+
+    <div class="result" id="result">
+      <p class="ok" id="resultText">✓ Done! Listen below:</p>
+      <audio id="resultPlayer" controls></audio>
+      <a class="download" id="download" download="voice_agent.mp3">Download MP3</a>
+    </div>
+    <p class="error" id="error"></p>
+  </section>
+
+  <p class="note">Only clone voices of people who have agreed to it.</p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const SAMPLE_RATE = 24000;   // what the model expects
+const MAX_UPLOAD_SECONDS = 180;  // the server picks the best 15 s, no need to send more than this
+const GAP_SECONDS = 0.3;     // pause put between joined clips
+const CHARS_PER_SECOND = 8;  // measured speaking speed incl. pauses, for the length estimate
+
+let clips = [];              // [{ name, samples: Float32Array at 24 kHz mono }]
+let voiceWav = null;         // Blob, the cleaned voice from the server, sent with the text
+let voiceVersion = 0;        // ignores answers for a clip list that has changed since
+let busy = false;
+let jobId = null;
+
+// ---------- tabs ----------
+document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t === tab));
+  $("tab-upload").hidden = tab.dataset.tab !== "upload";
+  $("tab-record").hidden = tab.dataset.tab !== "record";
+}));
+
+// ---------- decode any audio to 24 kHz mono samples in the browser ----------
+async function decode(blob) {
+  const ctx = new AudioContext();
+  let decoded;
+  try {
+    decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+  } finally {
+    ctx.close();
+  }
+  const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * SAMPLE_RATE), SAMPLE_RATE);
+  const src = offline.createBufferSource();
+  src.buffer = decoded;
+  src.connect(offline.destination);
+  src.start();
+  return (await offline.startRendering()).getChannelData(0);
+}
+
+function joinClips() {
+  const gap = new Float32Array(Math.round(GAP_SECONDS * SAMPLE_RATE));
+  const parts = [];
+  clips.forEach((c, i) => { if (i) parts.push(gap); parts.push(c.samples); });
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Float32Array(Math.min(total, MAX_UPLOAD_SECONDS * SAMPLE_RATE));
+  let at = 0;
+  for (const p of parts) {
+    if (at >= out.length) break;
+    out.set(p.subarray(0, out.length - at), at);
+    at += p.length;
+  }
+  return out;
+}
+
+function toWav(samples) {
+  const buf = new ArrayBuffer(44 + samples.length * 2);
+  const v = new DataView(buf);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, SAMPLE_RATE, true); v.setUint32(28, SAMPLE_RATE * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, samples.length * 2, true);
+  samples.forEach((s, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 0x7fff, true));
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+// ---------- the list of clips, and the cleaned voice from the server ----------
+function renderClips() {
+  const list = $("clips");
+  list.innerHTML = "";
+  clips.forEach((c, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="name"></span><span class="len">${mmss(c.samples.length / SAMPLE_RATE)}</span>
+                    <button title="Remove this clip" aria-label="Remove">✕</button>`;
+    li.querySelector(".name").textContent = c.name;
+    li.querySelector("button").onclick = () => { clips.splice(i, 1); updateVoice(); };
+    list.appendChild(li);
+  });
+}
+
+function showQuality(info) {
+  const q = $("quality");
+  const snr = info.snr_after;
+  let cls, title, text;
+  if (snr >= 25) {
+    cls = "good"; title = "✓ Clear voice";
+    text = "Good recording for copying.";
+  } else if (snr >= 17) {
+    cls = "ok"; title = "Usable, with some noise left";
+    text = "The copy should work, but may carry a little noise. A quieter recording would sound better.";
+  } else {
+    cls = "bad"; title = "Still noisy";
+    text = "The copy will probably sound noisy or unclear. Try a recording in a quiet room, close to the microphone.";
+  }
+  q.className = `quality ${cls}`;
+  q.innerHTML = `<b>${title}</b>${text} <span style="color:var(--muted)">(clarity ${info.snr_before} → ${info.snr_after} dB, 25+ is clear)</span>`;
+}
+
+async function updateVoice() {
+  renderClips();
+  const version = ++voiceVersion;
+  voiceWav = null;
+  if (!clips.length) {
+    $("voiceReady").classList.remove("show");
+    refresh();
+    return;
+  }
+
+  const original = toWav(joinClips());
+  $("originalPlayer").src = URL.createObjectURL(original);
+  $("voiceInfo").textContent = "Preparing the voice…";
+  $("voiceInfo").className = "";
+  $("quality").className = "quality"; $("quality").textContent = "";
+  $("voiceReady").classList.add("show");
+  refresh();
+
+  const form = new FormData();
+  form.append("voice", original, "voice.wav");
+  form.append("clean", $("clean").checked ? "1" : "0");
+  try {
+    const res = await fetch("/api/voice", { method: "POST", body: form });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Server error ${res.status}`);
+    const info = JSON.parse(res.headers.get("X-Voice-Info"));
+    const wav = await res.blob();
+    if (version !== voiceVersion) return;  // the clips changed while this was running
+
+    voiceWav = wav;
+    $("voicePlayer").src = URL.createObjectURL(wav);
+    $("afterLabel").textContent = info.noise_cleaned ? "After cleanup, this is what is copied" : "This is what is copied";
+    const parts = [];
+    if (info.clips > 1) parts.push(`${info.clips} clips joined`);
+    if (info.total_seconds > info.used_seconds + 0.5)
+      parts.push(`clearest ${info.used_seconds} s used (from ${mmss(info.used_from)} of ${mmss(info.total_seconds)})`);
+    else parts.push(`${info.used_seconds} s of speech`);
+    parts.push(info.noise_cleaned ? "noise cleaned" : $("clean").checked ? "already clear, not changed" : "not cleaned");
+    if (info.used_seconds < 4) parts.push("a bit short, add more of the same person for a better copy");
+    $("voiceInfo").textContent = "✓ Voice ready: " + parts.join(" · ");
+    $("voiceInfo").className = "ok";
+    showQuality(info);
+  } catch (e) {
+    if (version !== voiceVersion) return;
+    $("voiceInfo").textContent = e.message === "Failed to fetch" ? "Can't reach the server. Is app.py still running?" : e.message;
+    $("voiceInfo").className = "error";
+  }
+  refresh();
+}
+
+$("clean").addEventListener("change", () => clips.length && updateVoice());
+
+async function addClips(items) {
+  $("error").textContent = "";
+  const failed = [];
+  for (const { blob, name } of items) {
+    try {
+      clips.push({ name, samples: await decode(blob) });
+    } catch {
+      failed.push(name);
+    }
+  }
+  if (failed.length) $("error").textContent = `Couldn't read as audio: ${failed.join(", ")}. Try mp3 or wav.`;
+  updateVoice();
+}
+
+// ---------- upload ----------
+$("file").addEventListener("change", e => {
+  addClips([...e.target.files].map(f => ({ blob: f, name: f.name })));
+  e.target.value = "";  // so the same file can be chosen again
+});
+const drop = $("drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => {
+  e.preventDefault(); drop.classList.remove("over");
+  addClips([...e.dataTransfer.files].map(f => ({ blob: f, name: f.name })));
+});
+
+// ---------- record ----------
+let recorder = null, chunks = [], started = 0, tick = null, recordings = 0;
+$("rec").addEventListener("click", async () => {
+  if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    $("timer").textContent = "Microphone not available. Allow access in the browser, or upload a file.";
+    return;
+  }
+  chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    stream.getTracks().forEach(t => t.stop());
+    clearInterval(tick);
+    $("rec").classList.remove("recording");
+    $("rec").textContent = "Record";
+    $("timer").textContent = "Added. Press to record another clip";
+    addClips([{ blob: new Blob(chunks, { type: recorder.mimeType }), name: `Recording ${++recordings}` }]);
+  };
+  recorder.start();
+  started = Date.now();
+  $("rec").classList.add("recording");
+  $("rec").textContent = "Stop";
+  tick = setInterval(() => {
+    const s = (Date.now() - started) / 1000;
+    $("timer").textContent = `Recording… ${s.toFixed(0)} s ${s >= 10 ? "(good, you can stop)" : ""}`;
+    if (s >= 60) recorder.stop();
+  }, 200);
+});
+
+// ---------- text ----------
+function updateCount() {
+  const n = $("text").value.trim().length;
+  $("count").textContent = n ? `${n.toLocaleString()} characters · about ${mmss(Math.max(1, n / CHARS_PER_SECOND))} of audio` : "0 characters";
+  refresh();
+}
+$("text").addEventListener("input", updateCount);
+$("textFile").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (f) { $("text").value = await f.text(); updateCount(); }
+  e.target.value = "";
+});
+
+function refresh() {
+  const hasText = $("text").value.trim().length > 0;
+  const preparing = clips.length && !voiceWav;
+  $("go").disabled = busy || !voiceWav || !hasText;
+  $("why").textContent = busy ? "" :
+    !clips.length && !hasText ? "Add a voice and some text first." :
+    !clips.length ? "Add a voice first (step 1)." :
+    preparing ? "Waiting for the voice to be ready…" :
+    !hasText ? "Write some text first (step 2)." : "";
+}
+
+// ---------- generate ----------
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function setProgress(title, nums, fraction, piece, text) {
+  $("statusTitle").textContent = title;
+  $("statusNums").textContent = nums;
+  $("bar").classList.toggle("busy", fraction === null);
+  $("barFill").style.width = fraction === null ? "" : `${Math.round(fraction * 100)}%`;
+  $("piece").textContent = piece ? `“${piece}”` : "";
+  $("statusText").textContent = text;
+}
+
+$("go").addEventListener("click", async () => {
+  busy = true; refresh();
+  $("error").textContent = "";
+  $("result").classList.remove("show");
+  $("status").classList.add("show");
+  $("cancel").disabled = false;
+  setProgress("Sending…", "", null, "", "");
+
+  const variant = $("variant").value;
+  const form = new FormData();
+  form.append("voice", voiceWav, "voice.wav");
+  form.append("text", $("text").value);
+  form.append("variant", variant);
+
+  try {
+    const res = await fetch("/api/speak", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+    jobId = data.job;
+
+    const t0 = Date.now();
+    while (true) {
+      const s = await (await fetch(`/api/jobs/${jobId}`)).json();
+      if (s.error && s.state !== "error") throw new Error(s.error);
+      if (s.state === "queued") {
+        setProgress("Waiting", "", null, "", `Another audio is being made first (${s.queued_before + 1} ahead).`);
+      } else if (s.state === "loading") {
+        setProgress("Loading the model", "", null, "",
+          "The first time this also downloads it (about 1–2 GB), this can take a few minutes.");
+      } else if (s.state === "working") {
+        const nums = s.total ? `${s.done} / ${s.total}` : "";
+        const left = s.eta != null ? `About ${mmss(s.eta)} left.` : "Measuring the speed…";
+        setProgress("Reading the text", nums, s.total ? s.done / s.total : null, s.piece,
+          `${left} Running for ${mmss((Date.now() - t0) / 1000)}. You can keep this page open and do other things.`);
+      } else if (s.state === "done") {
+        const url = `/api/jobs/${jobId}/audio`;
+        $("resultPlayer").src = url;
+        $("download").href = url;
+        $("resultText").textContent = `✓ Done! ${mmss(s.seconds)} of audio. Listen below:`;
+        $("result").classList.add("show");
+        $("resultPlayer").play().catch(() => {});
+        break;
+      } else if (s.state === "cancelled") {
+        $("error").textContent = "Stopped.";
+        break;
+      } else if (s.state === "error") {
+        throw new Error(s.error);
+      }
+      await sleep(1000);
+    }
+  } catch (e) {
+    $("error").textContent = e.message === "Failed to fetch"
+      ? "Can't reach the server. Is app.py still running?"
+      : e.message;
+  } finally {
+    busy = false;
+    jobId = null;
+    $("status").classList.remove("show");
+    refresh();
+  }
+});
+
+$("cancel").addEventListener("click", async () => {
+  if (!jobId) return;
+  $("cancel").disabled = true;
+  $("statusText").textContent = "Stopping after the current sentence…";
+  await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => {});
+});
+</script>
+</body>
+</html>

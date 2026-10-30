@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Agent</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="theme-color" content="#0D0E12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+Armenian:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D0E12;
+    --card: #16181E;
+    --card-2: #1D2027;
+    --line: #262932;
+    --line-2: #3A3D47;
+    --text: #F3F0EA;
+    --muted: #A9A6AF;
+    --faint: #8E8B94;
+    --accent: #FF6A3D;
+    --accent-ink: #140A06;
+    --lilac: #B9A7FF;
+    --ok: #6EE7A0;
+    --warn: #FBBF5A;
+    --error: #FF8A80;
+    --display: Unbounded, "Noto Sans Armenian", system-ui, sans-serif;
+    --body: Inter, "Noto Sans Armenian", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 var(--body); overflow-x: hidden;
+  }
+  a { color: var(--accent); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ---------- animations ---------- */
+  @keyframes ring  { 0% { transform: scale(.55); opacity: .75 } 100% { transform: scale(1.4); opacity: 0 } }
+  @keyframes eq    { 0%,100% { transform: scaleY(.25) } 50% { transform: scaleY(1) } }
+  @keyframes cycle { 0% { opacity: 0; transform: translateY(14px) } 6%,30% { opacity: 1; transform: none } 36%,100% { opacity: 0; transform: translateY(-14px) } }
+  @keyframes rise  { from { opacity: 0; transform: translateY(18px) } to { opacity: 1; transform: none } }
+  @keyframes spin  { to { transform: rotate(360deg) } }
+  @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+  @keyframes sheen { 0% { transform: translateX(-120%) skewX(-20deg) } 60%,100% { transform: translateX(380%) skewX(-20deg) } }
+  @keyframes slide { from { margin-left: -35% } to { margin-left: 100% } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  .wrap { max-width: 1200px; margin: 0 auto; padding-left: 32px; padding-right: 32px; }
+  @media (max-width: 600px) { .wrap { padding-left: 18px; padding-right: 18px; } }
+
+  /* ---------- nav ---------- */
+  nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-top: 24px; padding-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 12px; font-family: var(--display); font-weight: 600; font-size: 17px; }
+  .logo { width: 38px; height: 38px; flex: none; display: block; }
+  .logo .b { transform-box: fill-box; transform-origin: top; animation: barV 2.4s ease-in-out infinite; }
+  .logo .b:nth-child(2) { animation-delay: -.3s; }
+  .logo .b:nth-child(3) { animation-delay: -.6s; }
+  .logo .b:nth-child(4) { animation-delay: -.9s; }
+  .logo .b:nth-child(5) { animation-delay: -1.2s; }
+  @keyframes barV { 0%,100% { transform: scaleY(1) } 50% { transform: scaleY(.72) } }
+  .langs { display: flex; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
+  .langs button {
+    min-width: 56px; min-height: 40px; padding: 0 14px; border: none; border-radius: 999px;
+    background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: .06em;
+    transition: background .25s, color .25s;
+  }
+  .langs button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+
+  /* ---------- hero ---------- */
+  .hero { display: flex; flex-wrap: wrap; align-items: center; gap: 56px; padding-top: 48px; padding-bottom: 88px; }
+  .hero-text { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 24px; animation: rise .8s ease-out both; }
+  .eyebrow { align-self: flex-start; display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; color: #C9C6CE; }
+  .eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: blink 1.6s ease-in-out infinite; }
+  h1 { margin: 0; font-family: var(--display); font-weight: 600; font-size: clamp(40px, 6vw, 64px); line-height: 1.08; letter-spacing: -.02em; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .hello { display: flex; align-items: center; gap: 14px; }
+  .hello::before { content: ""; width: 44px; height: 1px; background: var(--line-2); }
+  .hello-words { position: relative; width: 320px; height: 38px; font-size: 26px; font-weight: 500; color: var(--lilac); }
+  .hello-words span { position: absolute; left: 0; top: 0; opacity: 0; animation: cycle 9s ease-in-out infinite; }
+  .hello-words span:nth-child(2) { animation-delay: 3s; }
+  .hello-words span:nth-child(3) { animation-delay: 6s; }
+  .sub { margin: 0; max-width: 540px; font-size: 18px; color: var(--muted); }
+  .hero-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .cta { display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 26px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; transition: transform .2s; }
+  .cta:hover { transform: translateY(-2px); }
+  .chip { padding: 6px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 13px; }
+
+  .orb-wrap { flex: 1 1 340px; display: flex; justify-content: center; }
+  .orb { position: relative; width: min(380px, 80vw); aspect-ratio: 1; display: grid; place-items: center; }
+  .orb .r { position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--accent); animation: ring 3.6s ease-out infinite; }
+  .orb .r:nth-child(2) { animation-delay: 1.2s; }
+  .orb .r:nth-child(3) { animation-delay: 2.4s; border-color: var(--lilac); }
+  .orb .dots { position: absolute; width: 79%; height: 79%; border-radius: 50%; border: 1px dashed #2C2F38; animation: spin 40s linear infinite; }
+  .orb .core { position: relative; width: 53%; aspect-ratio: 1; border-radius: 50%; background: var(--card); border: 1px solid #2C2F38; box-shadow: 0 0 80px rgba(255,106,61,.25); display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .orb .core span { width: 6px; border-radius: 6px; background: var(--accent); animation: eq 1s ease-in-out infinite; }
+  .orb .core span:nth-child(3n+2) { background: var(--lilac); }
+
+  /* ---------- workspace ---------- */
+  main { display: flex; flex-direction: column; gap: 24px; padding-bottom: 88px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 24px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 32px; display: flex; flex-direction: column; gap: 20px; animation: rise .8s ease-out both; min-width: 0; }
+  .card:nth-child(2) { animation-delay: .15s; }
+  .card.gen { animation-delay: .3s; }
+  @media (max-width: 600px) { .card { padding: 22px; border-radius: 20px; } }
+  .card-head { display: flex; align-items: baseline; gap: 14px; }
+  .card-head b { font-family: var(--display); font-weight: 500; font-size: 14px; color: var(--accent); }
+  .card-head h2 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 24px; }
+  .hint { margin: -8px 0 0; color: var(--muted); font-size: 15px; }
+
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg); border-radius: 14px; }
+  .tab { min-height: 44px; border: none; border-radius: 10px; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; transition: background .25s, color .25s; }
+  .tab[aria-selected="true"] { background: var(--line); color: var(--text); }
+
+  .drop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 34px 20px; border: 1.5px dashed var(--line-2); border-radius: 18px; cursor: pointer; text-align: center; transition: border-color .2s, background .2s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: rgba(255,106,61,.05); }
+  .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .drop .ic { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,106,61,.12); display: grid; place-items: center; transition: transform .2s; }
+  .drop:hover .ic { transform: translateY(-3px); }
+  .drop strong { font-weight: 600; }
+  .drop small { font-size: 13px; color: var(--muted); }
+
+  .record-box { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px 16px; border-radius: 18px; background: var(--bg); text-align: center; }
+  .record-box small { font-size: 13px; color: var(--muted); }
+  .say { margin: 0; font-family: "Noto Sans Armenian", var(--body); font-size: 18px; line-height: 1.6; }
+  .rec-wrap { position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
+  .rec-wrap::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); opacity: 0; }
+  .rec-wrap.recording::before { animation: ring 1.4s ease-out infinite; }
+  .rec-btn { position: relative; width: 76px; height: 76px; border-radius: 50%; border: none; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; transition: transform .15s; }
+  .rec-btn:active { transform: scale(.94); }
+  .rec-btn .stop-ic { display: none; }
+  .rec-wrap.recording .rec-btn .mic-ic { display: none; }
+  .rec-wrap.recording .rec-btn .stop-ic { display: block; }
+  .timer { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .clips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .clips:empty { display: none; }
+  .clips li { display: flex; align-items: center; gap: 12px; padding: 4px 4px 4px 14px; border-radius: 12px; background: var(--card-2); font-size: 14px; animation: rise .35s ease-out both; }
+  .clips .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clips .len { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .clips button { width: 44px; height: 44px; border: none; background: transparent; border-radius: 10px; display: grid; place-items: center; color: var(--muted); }
+  .clips button:hover { background: rgba(255,138,128,.12); color: var(--error); }
+
+  .check { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+  .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex: none; }
+  .check span { display: flex; flex-direction: column; }
+  .check b { font-weight: 500; }
+  .check small { font-size: 13px; color: var(--muted); }
+
+  .voice-ready { display: none; flex-direction: column; gap: 14px; padding: 18px; border-radius: 18px; background: var(--bg); border: 1px solid var(--line); animation: rise .4s ease-out both; }
+  .voice-ready.show { display: flex; }
+  #voiceInfo { margin: 0; font-size: 13px; color: var(--muted); }
+  #voiceInfo.ok { color: var(--ok); }
+  #voiceInfo.error { color: var(--error); }
+  .compare { display: grid; gap: 10px; }
+  .compare label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  audio { width: 100%; height: 40px; }
+  .quality { font-size: 13px; color: var(--muted); }
+  .quality:empty { display: none; }
+  .quality b { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; margin-right: 8px; border-radius: 999px; font-weight: 600; }
+  .quality.good b { background: rgba(110,231,160,.12); color: var(--ok); }
+  .quality.ok b { background: rgba(251,191,90,.12); color: var(--warn); }
+  .quality.bad b { background: rgba(255,138,128,.12); color: var(--error); }
+  .quality .db { display: block; margin-top: 6px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  textarea {
+    width: 100%; min-height: 220px; padding: 20px; border-radius: 18px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); font-family: "Noto Sans Armenian", var(--body); font-size: 18px; line-height: 1.7; resize: vertical;
+    transition: border-color .2s;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .text-tools { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .text-tools span { font-variant-numeric: tabular-nums; }
+  .link-btn { position: relative; color: var(--accent); font-weight: 600; cursor: pointer; }
+  .link-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+  fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; margin-bottom: 10px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .models { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 420px) { .models { grid-template-columns: 1fr; } }
+  .model { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; transition: border-color .25s, background .25s; }
+  .model input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .model b { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; font-size: 15px; }
+  .model b::after { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line-2); flex: none; transition: all .25s; }
+  .model small { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .model:has(input:checked) { background: rgba(255,106,61,.08); border-color: var(--accent); }
+  .model:has(input:checked) b::after { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(255,106,61,.25); }
+  .model:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .go {
+    position: relative; overflow: hidden; height: 68px; border: none; border-radius: 18px;
+    background: var(--accent); color: var(--accent-ink); font-family: var(--display); font-size: 19px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 12px; transition: transform .2s, opacity .2s;
+  }
+  .go::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 30%; background: rgba(255,255,255,.28); animation: sheen 3.2s ease-in-out infinite; }
+  .go:hover:not(:disabled) { transform: translateY(-2px); }
+  .go:disabled { opacity: .4; cursor: not-allowed; }
+  .go:disabled::before { animation: none; display: none; }
+  .go span, .go svg { position: relative; }
+  .why { margin: -8px 0 0; text-align: center; color: var(--muted); font-size: 14px; min-height: 21px; }
+
+  .status { display: none; flex-direction: column; gap: 10px; padding: 20px 24px; border-radius: 18px; background: var(--bg); border: 1px solid var(--line); }
+  .status.show { display: flex; }
+  .status-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 14px; }
+  .status-top span { font-weight: 600; }
+  .status-top b { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 500; }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width .4s; }
+  .bar.busy span { width: 35%; animation: slide 1.4s ease-in-out infinite; }
+  .piece { margin: 0; font-family: "Noto Sans Armenian", var(--body); color: var(--lilac); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .piece:empty { display: none; }
+  #statusText { margin: 0; color: var(--muted); font-size: 14px; }
+  .cancel { align-self: flex-start; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; font-size: 14px; }
+  .cancel:hover { border-color: var(--error); color: var(--error); }
+
+  .result { display: none; flex-direction: column; gap: 14px; padding: 20px 24px; border-radius: 18px; background: var(--bg); border: 1px solid var(--line); animation: rise .5s ease-out both; }
+  .result.show { display: flex; }
+  .result-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #resultText { margin: 0; font-weight: 600; color: var(--ok); flex: 1; }
+  .viz { display: flex; align-items: center; gap: 3px; height: 32px; }
+  .viz span { width: 3px; height: 100%; border-radius: 2px; background: var(--accent); transform: scaleY(.2); }
+  .result.playing .viz span { animation: eq .8s ease-in-out infinite; }
+  .download { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 20px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text); text-decoration: none; font-weight: 600; font-size: 14px; transition: border-color .2s, color .2s; }
+  .download:hover { border-color: var(--accent); color: var(--accent); }
+  .error { margin: 0; color: var(--error); font-size: 14px; }
+  .error:empty { display: none; }
+  .note { margin: 0; text-align: center; font-size: 13px; color: var(--faint); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="24" fill="#FF6A3D"/><g fill="#140A06"><rect class="b" x="22" y="26" width="8" height="48" rx="4"/><rect class="b" x="34" y="26" width="8" height="36" rx="4"/><rect class="b" x="46" y="26" width="8" height="22" rx="4"/><rect class="b" x="58" y="26" width="8" height="36" rx="4"/><rect class="b" x="70" y="26" width="8" height="48" rx="4"/></g></svg>
+      Voice Agent
+    </div>
+    <div class="langs" role="group" data-i18n-aria="langLabel" aria-label="Language">
+      <button type="button" data-lang="hy" aria-pressed="false">ՀԱՅ</button>
+      <button type="button" data-lang="ru" aria-pressed="false">РУС</button>
+      <button type="button" data-lang="en" aria-pressed="true">ENG</button>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-text">
+      <span class="eyebrow"><i></i><span data-i18n="eyebrow">Voice cloning · Text to speech</span></span>
+      <h1><span data-i18n="h1a">Any voice.</span><br><em data-i18n="h1b">Your words.</em></h1>
+      <div class="hello" aria-hidden="true">
+        <span class="hello-words"><span lang="hy">Բարև ձեզ</span><span lang="ru">Здравствуйте</span><span lang="en">Hello</span></span>
+      </div>
+      <p class="sub" data-i18n="sub"></p>
+      <div class="hero-row">
+        <a class="cta" href="#workspace"><span data-i18n="cta">Start creating</span>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <span class="chip" lang="hy">Հայերեն</span><span class="chip" lang="ru">Русский</span><span class="chip" lang="en">English</span>
+      </div>
+    </div>
+    <div class="orb-wrap" aria-hidden="true">
+      <div class="orb">
+        <span class="r"></span><span class="r"></span><span class="r"></span>
+        <span class="dots"></span>
+        <div class="core" id="orbBars"></div>
+      </div>
+    </div>
+  </header>
+
+  <main id="workspace">
+    <div class="grid">
+
+      <!-- Step 1: voice -->
+      <section class="card">
+        <div class="card-head"><b>01</b><h2 data-i18n="v">Voice</h2></div>
+        <p class="hint" data-i18n="vHint"></p>
+
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="upload" data-i18n="upload">Upload</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="record" data-i18n="recordTab">Record</button>
+        </div>
+
+        <div id="tab-upload">
+          <label class="drop" id="drop">
+            <input type="file" id="file" accept="audio/*,video/*" multiple>
+            <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF6A3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
+            <strong data-i18n="drop">Choose files or drop them here</strong>
+            <small data-i18n="formats"></small>
+          </label>
+        </div>
+
+        <div id="tab-record" hidden>
+          <div class="record-box">
+            <small data-i18n="readAloud"></small>
+            <p class="say" lang="hy">Բարև ձեզ։ Այսօր եղանակը շատ լավն է, և ես ուզում եմ մի փոքր զբոսնել քաղաքում։</p>
+            <div class="rec-wrap" id="recWrap">
+              <button class="rec-btn" id="rec" type="button" aria-label="Record">
+                <svg class="mic-ic" aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+                <svg class="stop-ic" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              </button>
+            </div>
+            <div class="timer" id="timer" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <ul class="clips" id="clips"></ul>
+
+        <label class="check">
+          <input type="checkbox" id="clean" checked>
+          <span><b data-i18n="clean">Clean background noise</b><small data-i18n="cleanHint"></small></span>
+        </label>
+
+        <div class="voice-ready" id="voiceReady" aria-live="polite">
+          <p id="voiceInfo"></p>
+          <div class="compare">
+            <div><label for="originalPlayer" data-i18n="before">Before</label><audio id="originalPlayer" controls></audio></div>
+            <div><label for="voicePlayer" id="afterLabel"></label><audio id="voicePlayer" controls></audio></div>
+          </div>
+          <div class="quality" id="quality"></div>
+        </div>
+      </section>
+
+      <!-- Step 2: text -->
+      <section class="card">
+        <div class="card-head"><b>02</b><h2 data-i18n="tx">Text</h2></div>
+        <p class="hint" data-i18n="txHint"></p>
+        <label for="text" class="sr-only" data-i18n="tx">Text</label>
+        <textarea id="text" data-i18n-placeholder="placeholder"></textarea>
+        <div class="text-tools">
+          <span id="count"></span>
+          <label class="link-btn"><span data-i18n="load">Load a .txt file</span><input type="file" id="textFile" accept=".txt,text/plain"></label>
+        </div>
+
+        <fieldset>
+          <legend data-i18n="model">Model</legend>
+          <div class="models">
+            <label class="model"><input type="radio" name="variant" value="run4_60k"><b data-i18n="m1">Natural</b><small data-i18n="m1d"></small></label>
+            <label class="model"><input type="radio" name="variant" value="run5_175k" checked><b data-i18n="m2">Accurate</b><small data-i18n="m2d"></small></label>
+            <label class="model"><input type="radio" name="variant" value="run5_250k"><b data-i18n="m3">Latest</b><small data-i18n="m3d"></small></label>
+            <label class="model"><input type="radio" name="variant" value="tri_v1"><b data-i18n="m4">Trilingual</b><small data-i18n="m4d"></small></label>
+          </div>
+        </fieldset>
+      </section>
+    </div>
+
+    <!-- Step 3: create -->
+    <section class="card gen">
+      <div class="card-head"><b>03</b><h2 data-i18n="gen">Generate</h2></div>
+      <button class="go" id="go" disabled>
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>
+        <span data-i18n="create">Generate voice</span>
+      </button>
+      <p class="why" id="why"></p>
+
+      <div class="status" id="status" aria-live="polite">
+        <div class="status-top"><span id="statusTitle"></span><b id="statusNums"></b></div>
+        <div class="bar" id="bar"><span id="barFill"></span></div>
+        <p class="piece" id="piece"></p>
+        <p id="statusText"></p>
+        <button class="cancel" id="cancel" data-i18n="stop">Stop</button>
+      </div>
+
+      <div class="result" id="result">
+        <div class="result-top">
+          <p id="resultText"></p>
+          <div class="viz" id="viz" aria-hidden="true"></div>
+        </div>
+        <audio id="resultPlayer" controls></audio>
+        <a class="download" id="download" download="voice_agent.mp3">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>
+          <span data-i18n="download">Download MP3</span>
+        </a>
+      </div>
+      <p class="error" id="error" role="alert"></p>
+    </section>
+
+    <p class="note" data-i18n="note"></p>
+  </main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SAMPLE_RATE = 24000;   // what the model expects
+const MAX_UPLOAD_SECONDS = 180;  // the server picks the best 15 s, no need to send more than this
+const GAP_SECONDS = 0.3;     // pause put between joined clips
+const CHARS_PER_SECOND = 8;  // measured speaking speed incl. pauses, for the length estimate
+
+// ---------- page languages ----------
+const I18N = {
+  en: {
+    langLabel: "Language",
+    eyebrow: "Voice cloning · Text to speech",
+    h1a: "Any voice.", h1b: "Your words.",
+    sub: "Upload a few seconds of someone’s voice, write the text, and hear it spoken in that voice: in Armenian, Russian or English.",
+    cta: "Start creating",
+    v: "Voice", vHint: "One person speaking, at least 5 seconds. A longer recording is fine: the clearest 15 seconds are used. Several clips of the same person are joined.",
+    upload: "Upload", recordTab: "Record",
+    drop: "Choose files or drop them here", formats: "mp3, wav, m4a, ogg · one clip or several",
+    readAloud: "Read this out loud, or say anything you like",
+    clean: "Clean background noise", cleanHint: "Recommended for noisy recordings. Clear recordings are left as they are.",
+    before: "Before", after: "After cleanup, this is what is copied", afterPlain: "This is what is copied",
+    tx: "Text", txHint: "Write as much as you like. Numbers are read as words; a new line gives a longer pause.",
+    placeholder: "Write your text here…",
+    load: "Load a .txt file", model: "Model",
+    m1: "Natural", m1d: "Old model · most natural sound · Armenian",
+    m2: "Accurate", m2d: "Best pronunciation · Armenian",
+    m3: "Latest", m3d: "Latest training step · Armenian",
+    m4: "Trilingual", m4d: "Armenian · Russian · English",
+    gen: "Generate", create: "Generate voice", stop: "Stop", download: "Download MP3",
+    note: "Only clone voices of people who have agreed to it.",
+    record: "Record", stopRec: "Stop recording", remove: "Remove this clip",
+    pressStart: "Press to start, press again to stop",
+    micNo: "Microphone not available. Allow access in the browser, or upload a file.",
+    added: "Added. Press to record another clip",
+    recording: s => `Recording… ${s} s${s >= 10 ? " (good, you can stop)" : ""}`,
+    recName: n => `Recording ${n}`,
+    preparing: "Preparing the voice…", ready: "Voice ready",
+    joined: n => `${n} clips joined`,
+    clearest: (u, from, total) => `clearest ${u} s used (from ${from} of ${total})`,
+    speech: u => `${u} s of speech`,
+    cleaned: "noise cleaned", alreadyClear: "already clear, not changed", notCleaned: "not cleaned",
+    short: "a bit short, add more of the same person for a better copy",
+    noServer: "Can't reach the server. Is app.py still running?",
+    badAudio: names => `Couldn't read as audio: ${names}. Try mp3 or wav.`,
+    qGood: "Clear voice", qGoodT: "Good recording for copying.",
+    qOk: "Usable, with some noise left", qOkT: "The copy should work, but may carry a little noise. A quieter recording would sound better.",
+    qBad: "Still noisy", qBadT: "The copy will probably sound noisy or unclear. Try a recording in a quiet room, close to the microphone.",
+    clarity: (a, b) => `Clarity ${a} → ${b} dB (25+ is clear)`,
+    count0: "0 characters", count: (n, len) => `${n} characters · about ${len} of audio`,
+    whyBoth: "Add a voice and some text first.", whyVoice: "Add a voice first (step 1).",
+    whyWait: "Waiting for the voice to be ready…", whyText: "Write some text first (step 2).",
+    starting: "Starting…", sending: "Sending…", waiting: "Waiting",
+    ahead: n => `Another audio is being made first (${n} ahead).`,
+    loading: "Loading the model", loadingT: "The first time this also downloads it (about 1–2 GB), this can take a few minutes.",
+    reading: "Reading the text", left: x => `About ${x} left.`, measuring: "Measuring the speed…",
+    running: x => `Running for ${x}. You can keep this page open and do other things.`,
+    done: s => `Done · ${s} of audio`, stopped: "Stopped.", stopping: "Stopping after the current sentence…"
+  },
+  ru: {
+    langLabel: "Язык",
+    eyebrow: "Клонирование голоса · Синтез речи",
+    h1a: "Любой голос.", h1b: "Ваши слова.",
+    sub: "Загрузите несколько секунд чьего-то голоса, напишите текст — и услышьте его этим голосом на армянском, русском или английском.",
+    cta: "Начать",
+    v: "Голос", vHint: "Говорит один человек, не менее 5 секунд. Длинная запись подойдёт: используются самые чистые 15 секунд. Несколько записей одного человека объединяются.",
+    upload: "Загрузить", recordTab: "Записать",
+    drop: "Выберите файлы или перетащите их сюда", formats: "mp3, wav, m4a, ogg · одна или несколько записей",
+    readAloud: "Прочитайте это вслух или скажите что угодно",
+    clean: "Убрать фоновый шум", cleanHint: "Рекомендуется для шумных записей. Чистые записи не изменяются.",
+    before: "До", after: "После очистки — это и будет скопировано", afterPlain: "Это и будет скопировано",
+    tx: "Текст", txHint: "Пишите сколько угодно. Числа читаются словами, новая строка — более длинная пауза.",
+    placeholder: "Введите текст здесь…",
+    load: "Загрузить .txt файл", model: "Модель",
+    m1: "Естественный", m1d: "Прежняя модель · самое естественное звучание · армянский",
+    m2: "Точный", m2d: "Лучшее произношение · армянский",
+    m3: "Последний", m3d: "Последний шаг обучения · армянский",
+    m4: "Трёхъязычный", m4d: "армянский · русский · английский",
+    gen: "Создание", create: "Создать озвучку", stop: "Остановить", download: "Скачать MP3",
+    note: "Клонируйте только голоса людей, которые на это согласились.",
+    record: "Записать", stopRec: "Остановить запись", remove: "Удалить запись",
+    pressStart: "Нажмите, чтобы начать, и ещё раз, чтобы остановить",
+    micNo: "Микрофон недоступен. Разрешите доступ в браузере или загрузите файл.",
+    added: "Добавлено. Нажмите, чтобы записать ещё",
+    recording: s => `Запись… ${s} с${s >= 10 ? " (достаточно, можно остановить)" : ""}`,
+    recName: n => `Запись ${n}`,
+    preparing: "Подготовка голоса…", ready: "Голос готов",
+    joined: n => `объединено записей: ${n}`,
+    clearest: (u, from, total) => `использованы лучшие ${u} с (с ${from} из ${total})`,
+    speech: u => `${u} с речи`,
+    cleaned: "шум убран", alreadyClear: "запись чистая, не изменена", notCleaned: "без очистки",
+    short: "коротковато — добавьте ещё записей того же человека",
+    noServer: "Сервер недоступен. app.py всё ещё запущен?",
+    badAudio: names => `Не удалось прочитать как аудио: ${names}. Попробуйте mp3 или wav.`,
+    qGood: "Чистый голос", qGoodT: "Хорошая запись для клонирования.",
+    qOk: "Подойдёт, но остался шум", qOkT: "Копия получится, но может быть немного шумной. Запись в тишине прозвучит лучше.",
+    qBad: "Всё ещё шумно", qBadT: "Копия, скорее всего, будет шумной или нечёткой. Запишите в тихой комнате, ближе к микрофону.",
+    clarity: (a, b) => `Чёткость ${a} → ${b} дБ (25+ — чисто)`,
+    count0: "0 символов", count: (n, len) => `${n} символов · около ${len} аудио`,
+    whyBoth: "Сначала добавьте голос и текст.", whyVoice: "Сначала добавьте голос (шаг 1).",
+    whyWait: "Ждём, пока голос будет готов…", whyText: "Сначала напишите текст (шаг 2).",
+    starting: "Запуск…", sending: "Отправка…", waiting: "Ожидание",
+    ahead: n => `Сначала создаётся другое аудио (в очереди перед вами: ${n}).`,
+    loading: "Загрузка модели", loadingT: "В первый раз модель также скачивается (около 1–2 ГБ), это может занять несколько минут.",
+    reading: "Чтение текста", left: x => `Осталось около ${x}.`, measuring: "Измеряем скорость…",
+    running: x => `Идёт ${x}. Можно оставить страницу открытой и заняться другими делами.`,
+    done: s => `Готово · ${s} аудио`, stopped: "Остановлено.", stopping: "Остановка после текущего предложения…"
+  },
+  hy: {
+    langLabel: "Լեզու",
+    eyebrow: "Ձայնի կլոնավորում · Տեքստից խոսք",
+    h1a: "Ցանկացած ձայն։", h1b: "Ձեր խոսքերը։",
+    sub: "Վերբեռնեք որևէ մեկի ձայնից մի քանի վայրկյան, գրեք տեքստը և լսեք այն այդ ձայնով՝ հայերեն, ռուսերեն կամ անգլերեն։",
+    cta: "Սկսել",
+    v: "Ձայն", vHint: "Մեկ խոսող, առնվազն 5 վայրկյան։ Երկար ձայնագրությունը նույնպես հարմար է՝ օգտագործվում են ամենամաքուր 15 վայրկյանները։ Միևնույն անձի մի քանի հատվածները միացվում են։",
+    upload: "Վերբեռնել", recordTab: "Ձայնագրել",
+    drop: "Ընտրեք ֆայլեր կամ քաշեք այստեղ", formats: "mp3, wav, m4a, ogg · մեկ կամ մի քանի հատված",
+    readAloud: "Կարդացեք սա բարձրաձայն կամ ասեք ցանկացած բան",
+    clean: "Մաքրել ֆոնային աղմուկը", cleanHint: "Խորհուրդ է տրվում աղմկոտ ձայնագրությունների համար։ Մաքուր ձայնագրությունները չեն փոխվում։",
+    before: "Առաջ", after: "Մաքրումից հետո՝ սա է կրկնօրինակվում", afterPlain: "Սա է կրկնօրինակվում",
+    tx: "Տեքստ", txHint: "Գրեք որքան ցանկանում եք։ Թվերը կարդացվում են բառերով, նոր տողը՝ ավելի երկար դադար։",
+    placeholder: "Գրեք տեքստը այստեղ…",
+    load: "Բեռնել .txt ֆայլ", model: "Մոդել",
+    m1: "Բնական", m1d: "Նախորդ մոդելը · ամենաբնական հնչողություն · հայերեն",
+    m2: "Ճշգրիտ", m2d: "Լավագույն արտասանություն · հայերեն",
+    m3: "Վերջին", m3d: "Ուսուցման վերջին քայլ · հայերեն",
+    m4: "Եռալեզու", m4d: "հայերեն · ռուսերեն · անգլերեն",
+    gen: "Ստեղծում", create: "Ստեղծել ձայնագրությունը", stop: "Կանգնեցնել", download: "Ներբեռնել MP3",
+    note: "Կրկնօրինակեք միայն այն մարդկանց ձայները, ովքեր համաձայնել են դրան։",
+    record: "Ձայնագրել", stopRec: "Կանգնեցնել ձայնագրումը", remove: "Հեռացնել հատվածը",
+    pressStart: "Սեղմեք՝ սկսելու համար, կրկին սեղմեք՝ կանգնեցնելու",
+    micNo: "Խոսափողը հասանելի չէ։ Թույլատրեք մուտքը դիտարկիչում կամ վերբեռնեք ֆայլ։",
+    added: "Ավելացված է։ Սեղմեք՝ ևս մեկ հատված ձայնագրելու համար",
+    recording: s => `Ձայնագրում… ${s} վ${s >= 10 ? " (բավական է, կարող եք կանգնեցնել)" : ""}`,
+    recName: n => `Ձայնագրություն ${n}`,
+    preparing: "Ձայնը պատրաստվում է…", ready: "Ձայնը պատրաստ է",
+    joined: n => `միացված է ${n} հատված`,
+    clearest: (u, from, total) => `օգտագործված է լավագույն ${u} վ (${from}-ից, ընդհանուր ${total})`,
+    speech: u => `${u} վ խոսք`,
+    cleaned: "աղմուկը մաքրված է", alreadyClear: "արդեն մաքուր է, չի փոխվել", notCleaned: "չի մաքրվել",
+    short: "մի փոքր կարճ է, ավելացրեք նույն անձի ևս ձայնագրություններ",
+    noServer: "Սերվերը հասանելի չէ։ app.py-ը դեռ աշխատո՞ւմ է։",
+    badAudio: names => `Չհաջողվեց կարդալ որպես ձայն՝ ${names}։ Փորձեք mp3 կամ wav։`,
+    qGood: "Մաքուր ձայն", qGoodT: "Լավ ձայնագրություն է կրկնօրինակման համար։",
+    qOk: "Օգտագործելի է, մնացել է մի փոքր աղմուկ", qOkT: "Կրկնօրինակը կստացվի, բայց կարող է մի փոքր աղմկոտ լինել։ Ավելի հանգիստ ձայնագրությունը ավելի լավ կհնչի։",
+    qBad: "Դեռ աղմկոտ է", qBadT: "Կրկնօրինակը, հավանաբար, աղմկոտ կամ անհստակ կլինի։ Ձայնագրեք հանգիստ սենյակում՝ խոսափողին մոտ։",
+    clarity: (a, b) => `Հստակություն ${a} → ${b} դԲ (25+՝ մաքուր)`,
+    count0: "0 նիշ", count: (n, len) => `${n} նիշ · մոտ ${len} ձայնագրություն`,
+    whyBoth: "Նախ ավելացրեք ձայն և տեքստ։", whyVoice: "Նախ ավելացրեք ձայն (քայլ 1)։",
+    whyWait: "Սպասում ենք, որ ձայնը պատրաստ լինի…", whyText: "Նախ գրեք տեքստը (քայլ 2)։",
+    starting: "Սկսվում է…", sending: "Ուղարկվում է…", waiting: "Սպասում",
+    ahead: n => `Նախ ստեղծվում է մեկ այլ ձայնագրություն (հերթում ձեզնից առաջ՝ ${n})։`,
+    loading: "Մոդելը բեռնվում է", loadingT: "Առաջին անգամ այն նաև ներբեռնվում է (մոտ 1–2 ԳԲ), դա կարող է տևել մի քանի րոպե։",
+    reading: "Տեքստը կարդացվում է", left: x => `Մնացել է մոտ ${x}։`, measuring: "Արագությունը չափվում է…",
+    running: x => `Ընթանում է ${x}։ Կարող եք էջը բաց թողնել և զբաղվել այլ գործերով։`,
+    done: s => `Պատրաստ է · ${s} ձայնագրություն`, stopped: "Կանգնեցված է։", stopping: "Կանգնեցվում է ընթացիկ նախադասությունից հետո…"
+  }
+};
+
+function pickLang() {
+  try { const saved = localStorage.getItem("lang"); if (I18N[saved]) return saved; } catch {}
+  const nav = (navigator.language || "en").slice(0, 2).toLowerCase();
+  return I18N[nav] ? nav : "en";
+}
+let lang = pickLang();
+const t = (key, ...args) => { const v = I18N[lang][key] ?? I18N.en[key]; return typeof v === "function" ? v(...args) : v; };
+
+function applyLang(next) {
+  lang = next;
+  try { localStorage.setItem("lang", lang); } catch {}
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
+  document.querySelectorAll(".langs button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  // texts set by the code
+  setRecLabel();
+  if (!recorder || recorder.state !== "recording") $("timer").textContent = recordings ? t("added") : t("pressStart");
+  renderClips();
+  if (lastVoice) showVoiceInfo(lastVoice); else if (clips.length && !voiceWav) $("voiceInfo").textContent = t("preparing");
+  $("afterLabel").textContent = lastVoice && !lastVoice.noise_cleaned ? t("afterPlain") : t("after");
+  if (lastVoice) showQuality(lastVoice);
+  if (lastResultSeconds != null) $("resultText").textContent = t("done", mmss(lastResultSeconds));
+  updateCount();
+}
+document.querySelectorAll(".langs button").forEach(b => b.addEventListener("click", () => applyLang(b.dataset.lang)));
+
+// ---------- decorative bars ----------
+(function makeBars() {
+  const orb = $("orbBars");
+  for (let i = 0; i < 11; i++) {
+    const s = document.createElement("span");
+    s.style.height = `${30 + Math.round(Math.sin(i / 10 * Math.PI) * 70)}px`;
+    s.style.animationDuration = `${0.8 + (i % 4) * 0.18}s`;
+    s.style.animationDelay = `${-(i * 0.13).toFixed(2)}s`;
+    orb.appendChild(s);
+  }
+  const viz = $("viz");
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement("span");
+    s.style.animationDuration = `${0.6 + (i % 5) * 0.12}s`;
+    s.style.animationDelay = `${-(i * 0.09).toFixed(2)}s`;
+    viz.appendChild(s);
+  }
+})();
+
+let clips = [];              // [{ name, samples: Float32Array at 24 kHz mono }]
+let voiceWav = null;         // Blob, the cleaned voice from the server, sent with the text
+let voiceVersion = 0;        // ignores answers for a clip list that has changed since
+let lastVoice = null;        // info about the prepared voice, kept to re-show it in another language
+let lastResultSeconds = null;
+let busy = false;
+let jobId = null;
+
+// ---------- tabs ----------
+document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === tab));
+  $("tab-upload").hidden = tab.dataset.tab !== "upload";
+  $("tab-record").hidden = tab.dataset.tab !== "record";
+}));
+
+// ---------- decode any audio to 24 kHz mono samples in the browser ----------
+async function decode(blob) {
+  const ctx = new AudioContext();
+  let decoded;
+  try {
+    decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+  } finally {
+    ctx.close();
+  }
+  const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * SAMPLE_RATE), SAMPLE_RATE);
+  const src = offline.createBufferSource();
+  src.buffer = decoded;
+  src.connect(offline.destination);
+  src.start();
+  return (await offline.startRendering()).getChannelData(0);
+}
+
+function joinClips() {
+  const gap = new Float32Array(Math.round(GAP_SECONDS * SAMPLE_RATE));
+  const parts = [];
+  clips.forEach((c, i) => { if (i) parts.push(gap); parts.push(c.samples); });
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Float32Array(Math.min(total, MAX_UPLOAD_SECONDS * SAMPLE_RATE));
+  let at = 0;
+  for (const p of parts) {
+    if (at >= out.length) break;
+    out.set(p.subarray(0, out.length - at), at);
+    at += p.length;
+  }
+  return out;
+}
+
+function toWav(samples) {
+  const buf = new ArrayBuffer(44 + samples.length * 2);
+  const v = new DataView(buf);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, SAMPLE_RATE, true); v.setUint32(28, SAMPLE_RATE * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, samples.length * 2, true);
+  samples.forEach((s, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 0x7fff, true));
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+// ---------- the list of clips, and the cleaned voice from the server ----------
+const X_ICON = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function renderClips() {
+  const list = $("clips");
+  list.innerHTML = "";
+  clips.forEach((c, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="name"></span><span class="len">${mmss(c.samples.length / SAMPLE_RATE)}</span><button type="button">${X_ICON}</button>`;
+    li.querySelector(".name").textContent = c.name;
+    const btn = li.querySelector("button");
+    btn.title = t("remove");
+    btn.setAttribute("aria-label", `${t("remove")}: ${c.name}`);
+    btn.onclick = () => { clips.splice(i, 1); updateVoice(); };
+    list.appendChild(li);
+  });
+}
+
+function showQuality(info) {
+  const q = $("quality");
+  const snr = info.snr_after;
+  const [cls, title, text] = snr >= 25 ? ["good", t("qGood"), t("qGoodT")]
+                         : snr >= 17 ? ["ok", t("qOk"), t("qOkT")]
+                         : ["bad", t("qBad"), t("qBadT")];
+  q.className = `quality ${cls}`;
+  q.innerHTML = "";
+  const b = document.createElement("b"); b.textContent = title;
+  const db = document.createElement("span"); db.className = "db"; db.textContent = t("clarity", info.snr_before, info.snr_after);
+  q.append(b, document.createTextNode(text), db);
+}
+
+function showVoiceInfo(info) {
+  const parts = [];
+  if (info.clips > 1) parts.push(t("joined", info.clips));
+  if (info.total_seconds > info.used_seconds + 0.5)
+    parts.push(t("clearest", info.used_seconds, mmss(info.used_from), mmss(info.total_seconds)));
+  else parts.push(t("speech", info.used_seconds));
+  parts.push(info.noise_cleaned ? t("cleaned") : $("clean").checked ? t("alreadyClear") : t("notCleaned"));
+  if (info.used_seconds < 4) parts.push(t("short"));
+  $("voiceInfo").textContent = `✓ ${t("ready")} · ${parts.join(" · ")}`;
+  $("voiceInfo").className = "ok";
+}
+
+async function updateVoice() {
+  renderClips();
+  const version = ++voiceVersion;
+  voiceWav = null;
+  lastVoice = null;
+  if (!clips.length) {
+    $("voiceReady").classList.remove("show");
+    refresh();
+    return;
+  }
+
+  const original = toWav(joinClips());
+  $("originalPlayer").src = URL.createObjectURL(original);
+  $("voiceInfo").textContent = t("preparing");
+  $("voiceInfo").className = "";
+  $("afterLabel").textContent = t("after");
+  $("quality").className = "quality"; $("quality").textContent = "";
+  $("voiceReady").classList.add("show");
+  refresh();
+
+  const form = new FormData();
+  form.append("voice", original, "voice.wav");
+  form.append("clean", $("clean").checked ? "1" : "0");
+  try {
+    const res = await fetch("/api/voice", { method: "POST", body: form });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Server error ${res.status}`);
+    const info = JSON.parse(res.headers.get("X-Voice-Info"));
+    const wav = await res.blob();
+    if (version !== voiceVersion) return;  // the clips changed while this was running
+
+    voiceWav = wav;
+    lastVoice = info;
+    $("voicePlayer").src = URL.createObjectURL(wav);
+    $("afterLabel").textContent = info.noise_cleaned ? t("after") : t("afterPlain");
+    showVoiceInfo(info);
+    showQuality(info);
+  } catch (e) {
+    if (version !== voiceVersion) return;
+    $("voiceInfo").textContent = e.message === "Failed to fetch" ? t("noServer") : e.message;
+    $("voiceInfo").className = "error";
+  }
+  refresh();
+}
+
+$("clean").addEventListener("change", () => clips.length && updateVoice());
+
+async function addClips(items) {
+  $("error").textContent = "";
+  const failed = [];
+  for (const { blob, name } of items) {
+    try {
+      clips.push({ name, samples: await decode(blob) });
+    } catch {
+      failed.push(name);
+    }
+  }
+  if (failed.length) $("error").textContent = t("badAudio", failed.join(", "));
+  updateVoice();
+}
+
+// ---------- upload ----------
+$("file").addEventListener("change", e => {
+  addClips([...e.target.files].map(f => ({ blob: f, name: f.name })));
+  e.target.value = "";  // so the same file can be chosen again
+});
+const drop = $("drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => {
+  e.preventDefault(); drop.classList.remove("over");
+  addClips([...e.dataTransfer.files].map(f => ({ blob: f, name: f.name })));
+});
+
+// ---------- record ----------
+let recorder = null, chunks = [], started = 0, tick = null, recordings = 0;
+function setRecLabel() {
+  const on = recorder && recorder.state === "recording";
+  $("rec").setAttribute("aria-label", on ? t("stopRec") : t("record"));
+  $("recWrap").classList.toggle("recording", !!on);
+}
+$("rec").addEventListener("click", async () => {
+  if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    $("timer").textContent = t("micNo");
+    return;
+  }
+  chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    stream.getTracks().forEach(tr => tr.stop());
+    clearInterval(tick);
+    setRecLabel();
+    recordings++;
+    $("timer").textContent = t("added");
+    addClips([{ blob: new Blob(chunks, { type: recorder.mimeType }), name: t("recName", recordings) }]);
+  };
+  recorder.start();
+  started = Date.now();
+  setRecLabel();
+  tick = setInterval(() => {
+    const s = (Date.now() - started) / 1000;
+    $("timer").textContent = t("recording", Math.floor(s));
+    if (s >= 60) recorder.stop();
+  }, 200);
+});
+
+// ---------- text ----------
+function updateCount() {
+  const n = $("text").value.trim().length;
+  $("count").textContent = n ? t("count", n.toLocaleString(), mmss(Math.max(1, n / CHARS_PER_SECOND))) : t("count0");
+  refresh();
+}
+$("text").addEventListener("input", updateCount);
+$("textFile").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (f) { $("text").value = await f.text(); updateCount(); }
+  e.target.value = "";
+});
+
+function refresh() {
+  const hasText = $("text").value.trim().length > 0;
+  const preparing = clips.length && !voiceWav;
+  $("go").disabled = busy || !voiceWav || !hasText;
+  $("why").textContent = busy ? "" :
+    !clips.length && !hasText ? t("whyBoth") :
+    !clips.length ? t("whyVoice") :
+    preparing ? t("whyWait") :
+    !hasText ? t("whyText") : "";
+}
+
+// ---------- generate ----------
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function setProgress(title, nums, fraction, piece, text) {
+  $("statusTitle").textContent = title;
+  $("statusNums").textContent = nums;
+  $("bar").classList.toggle("busy", fraction === null);
+  $("barFill").style.width = fraction === null ? "" : `${Math.round(fraction * 100)}%`;
+  $("piece").textContent = piece ? `“${piece}”` : "";
+  $("statusText").textContent = text;
+}
+
+$("go").addEventListener("click", async () => {
+  busy = true; refresh();
+  $("error").textContent = "";
+  $("result").classList.remove("show");
+  lastResultSeconds = null;
+  $("status").classList.add("show");
+  $("cancel").disabled = false;
+  setProgress(t("sending"), "", null, "", "");
+
+  const variant = document.querySelector('input[name="variant"]:checked').value;
+  const form = new FormData();
+  form.append("voice", voiceWav, "voice.wav");
+  form.append("text", $("text").value);
+  form.append("variant", variant);
+
+  try {
+    const res = await fetch("/api/speak", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+    jobId = data.job;
+
+    const t0 = Date.now();
+    while (true) {
+      const s = await (await fetch(`/api/jobs/${jobId}`)).json();
+      if (s.error && s.state !== "error") throw new Error(s.error);
+      if (s.state === "queued") {
+        setProgress(t("waiting"), "", null, "", t("ahead", s.queued_before + 1));
+      } else if (s.state === "loading") {
+        setProgress(t("loading"), "", null, "", t("loadingT"));
+      } else if (s.state === "working") {
+        const nums = s.total ? `${s.done} / ${s.total}` : "";
+        const left = s.eta != null ? t("left", mmss(s.eta)) : t("measuring");
+        setProgress(t("reading"), nums, s.total ? s.done / s.total : null, s.piece,
+          `${left} ${t("running", mmss((Date.now() - t0) / 1000))}`);
+      } else if (s.state === "done") {
+        const url = `/api/jobs/${jobId}/audio`;
+        $("resultPlayer").src = url;
+        $("download").href = url;
+        lastResultSeconds = s.seconds;
+        $("resultText").textContent = t("done", mmss(s.seconds));
+        $("result").classList.add("show");
+        $("resultPlayer").play().catch(() => {});
+        break;
+      } else if (s.state === "cancelled") {
+        $("error").textContent = t("stopped");
+        break;
+      } else if (s.state === "error") {
+        throw new Error(s.error);
+      }
+      await sleep(1000);
+    }
+  } catch (e) {
+    $("error").textContent = e.message === "Failed to fetch" ? t("noServer") : e.message;
+  } finally {
+    busy = false;
+    jobId = null;
+    $("status").classList.remove("show");
+    refresh();
+  }
+});
+
+$("cancel").addEventListener("click", async () => {
+  if (!jobId) return;
+  $("cancel").disabled = true;
+  $("statusText").textContent = t("stopping");
+  await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => {});
+});
+
+// the little bars next to the result move while it plays
+const player = $("resultPlayer");
+player.addEventListener("play", () => $("result").classList.add("playing"));
+["pause", "ended", "emptied"].forEach(ev => player.addEventListener(ev, () => $("result").classList.remove("playing")));
+
+// the server decides the default model, so going back to the old one is a single line in voice_agent.py
+fetch("/api/status").then(r => r.json()).then(s => {
+  const choice = document.querySelector(`input[name="variant"][value="${s.default}"]`);
+  if (choice) choice.checked = true;
+}).catch(() => {});
+
+applyLang(lang);
+</script>
+</body>
+</html>
